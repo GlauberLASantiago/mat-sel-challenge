@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DEMa-UFSCar | Simulador de Seleção de Materiais</title>
+  <style>
+    :root {
+      --bg: #08111f;
+      --panel: #0f1b31;
+      --panel-2: #132440;
+      --text: #eaf2ff;
+      --muted: #a8bbd8;
+      --accent: #60a5fa;
+      --accent-2: #22c55e;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --shadow: 0 18px 50px rgba(0,0,0,.28);
+      --radius: 22px;
+      --bar-bg: rgba(255,255,255,.08);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: radial-gradient(circle at top, #102447 0%, var(--bg) 48%, #050a13 100%); color: var(--text); min-height: 100%; }
+    body { padding: 24px; }
+
+    .app {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .topbar, .panel, .material-card, .modal-content {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid rgba(255,255,255,.09);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .topbar {
+      border-radius: 28px;
+      padding: 22px;
+      display: grid;
+      grid-template-columns: 1.4fr .8fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .title-wrap h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.05;
+      letter-spacing: -.03em;
+    }
+
+    .title-wrap p { margin: 0; color: var(--muted); font-size: 1.03rem; max-width: 75ch; }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .badge {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: .88rem;
+      color: #d7e6ff;
+      background: rgba(96,165,250,.12);
+      border: 1px solid rgba(96,165,250,.28);
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 18px;
+      padding: 16px;
+      min-height: 108px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .stat-label { font-size: .82rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .stat-value { font-size: clamp(22px, 3vw, 34px); font-weight: 800; margin-top: 8px; }
+    .lives { display: flex; gap: 6px; font-size: 1.65rem; }
+    .heart.dead { filter: grayscale(1); opacity: .35; }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 360px minmax(0,1fr);
+      gap: 18px;
+    }
+
+    .panel {
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 1.15rem;
+      letter-spacing: -.01em;
+    }
+
+    .mission-box {
+      background: linear-gradient(180deg, rgba(96,165,250,.12), rgba(34,197,94,.08));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .mission-title {
+      font-size: .85rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #b8cff2;
+      margin-bottom: 8px;
+    }
+
+    .mission-text {
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .requirement-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .requirement {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      padding: 12px 14px;
+    }
+
+    .requirement strong { display: block; font-size: .94rem; margin-bottom: 4px; }
+    .requirement span { color: var(--muted); font-size: .94rem; }
+
+    .legend {
+      margin-top: 16px;
+      font-size: .93rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-weight: 700;
+      font-size: .96rem;
+      cursor: pointer;
+      transition: transform .15s ease, opacity .15s ease, box-shadow .15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(1px); }
+    .primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; box-shadow: 0 10px 20px rgba(37,99,235,.28); }
+    .secondary { background: rgba(255,255,255,.07); color: var(--text); border: 1px solid rgba(255,255,255,.1); }
+
+    .materials-wrap { display: grid; gap: 16px; }
+    .materials-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .materials-header p { margin: 0; color: var(--muted); }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .material-card {
+      border-radius: 24px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+      overflow: hidden;
+      min-height: 430px;
+    }
+
+    .material-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), #8b5cf6, #22c55e);
+      opacity: .9;
+    }
+
+    .material-card h3 { margin: 6px 0 2px; font-size: 1.28rem; }
+    .material-sub { color: var(--muted); font-size: .94rem; margin: 0; }
+
+    .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
+      font-size: .8rem;
+      color: #d7e7ff;
+    }
+
+    .properties { display: grid; gap: 10px; }
+    .prop-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: .89rem;
+      margin-bottom: 6px;
+    }
+    .prop-head span:last-child { color: #dbeafe; font-weight: 700; }
+    .bar {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--bar-bg);
+      overflow: hidden;
+      position: relative;
+    }
+    .bar > i {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(96,165,250,.9), rgba(34,197,94,.9));
+    }
+
+    .card-footer { margin-top: auto; }
+    .select-btn { width: 100%; padding: 14px 16px; font-size: 1rem; }
+
+    .feedback {
+      min-height: 56px;
+      border-radius: 16px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: .97rem;
+    }
+
+    .feedback.good { border-color: rgba(34,197,94,.35); color: #d6ffe5; background: rgba(34,197,94,.08); }
+    .feedback.bad { border-color: rgba(239,68,68,.35); color: #ffd7d7; background: rgba(239,68,68,.08); }
+    .feedback.warn { border-color: rgba(245,158,11,.35); color: #ffe7bc; background: rgba(245,158,11,.08); }
+
+    .footer-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: .9rem;
+      padding: 6px 12px 20px;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.72);
+      display: none;
+      place-items: center;
+      padding: 20px;
+      z-index: 40;
+    }
+
+    .modal.show { display: grid; }
+    .modal-content {
+      width: min(680px, 100%);
+      border-radius: 28px;
+      padding: 28px;
+      text-align: center;
+    }
+    .modal-content h2 { font-size: clamp(28px, 4vw, 42px); margin: 0 0 10px; }
+    .modal-content p { color: var(--muted); line-height: 1.55; }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .result-box {
+      border-radius: 18px;
+      padding: 16px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .result-box strong { display: block; font-size: 1.4rem; margin-top: 4px; }
+
+    .small {
+      font-size: .87rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1080px) {
+      .topbar, .main-grid { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: 1fr; }
+      .material-card { min-height: auto; }
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 14px; }
+      .topbar, .panel, .material-card, .modal-content { border-radius: 20px; }
+      .status-grid { grid-template-columns: 1fr 1fr; }
+      .result-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="topbar">
+      <div class="title-wrap">
+        <h1>Material Selector Challenge</h1>
+        <p><strong>DEMa-UFSCar</strong> — sobreviva às rodadas selecionando o único material que satisfaz <strong>duas restrições simultâneas</strong>. Leia os gráficos, compare desempenho e evite a falha catastrófica.</p>
+        <div class="badge-row">
+          <span class="badge">Metodologia de Ashby</span>
+          <span class="badge">Seleção por restrições</span>
+          <span class="badge">3 vidas de integridade</span>
+          <span class="badge">Desafio progressivo</span>
+        </div>
+      </div>
+      <div class="status-grid">
+        <div class="stat">
+          <div class="stat-label">Pontuação</div>
+          <div class="stat-value" id="score">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Rodada</div>
+          <div class="stat-value" id="round">1</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Integridade</div>
+          <div class="stat-value lives" id="lives"></div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Melhor sequência</div>
+          <div class="stat-value" id="bestStreak">0</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <aside class="panel">
+        <h2>Missão de Engenharia</h2>
+        <div class="mission-box">
+          <div class="mission-title">Projeto em risco</div>
+          <p class="mission-text" id="missionText"></p>
+        </div>
+
+        <div class="requirement-list" id="requirements"></div>
+
+        <div class="legend">
+          <strong>Como vencer:</strong> escolha o único material que atende às <strong>duas restrições</strong>. Os gráficos mostram quatro propriedades críticas do banco de materiais:<br><br>
+          <strong>Temperatura máxima</strong> (°C), <strong>Custo</strong> (R$/kg), <strong>Densidade</strong> (g/cm³) e <strong>Resistência</strong> (MPa).<br><br>
+          Na prática, você está cruzando propriedades limitantes exatamente como na <strong>seleção de materiais de Ashby</strong>.
+        </div>
+
+        <div class="controls">
+          <button class="primary" id="newGameBtn">Novo jogo</button>
+          <button class="secondary" id="nextRoundBtn">Próxima rodada</button>
+        </div>
+      </aside>
+
+      <main class="panel materials-wrap">
+        <div class="materials-header">
+          <div>
+            <h2 style="margin-bottom:6px;">Mesa de Materiais</h2>
+            <p>Analise os gráficos e selecione o candidato correto.</p>
+          </div>
+          <div class="small">Apenas <strong>1</strong> opção evita a falha do projeto.</div>
+        </div>
+
+        <div id="cards" class="cards"></div>
+
+        <div id="feedback" class="feedback">Aguardando sua decisão como Engenheiro Chefe.</div>
+      </main>
+    </section>
+
+    <div class="footer-note">Desenvolvido como atividade didática para o DEMa-UFSCar: leitura comparativa de propriedades, tomada de decisão e prevenção de falhas de projeto.</div>
+  </div>
+
+  <div class="modal" id="gameOverModal" aria-hidden="true">
+    <div class="modal-content">
+      <h2>Falha catastrófica.</h2>
+      <p>Sua integridade estrutural chegou a zero. Revise os critérios, compare as propriedades e tente estabelecer uma sequência maior de seleções corretas.</p>
+      <div class="result-grid">
+        <div class="result-box"><span class="small">Pontuação final</span><strong id="finalScore">0</strong></div>
+        <div class="result-box"><span class="small">Rodadas vencidas</span><strong id="finalRounds">0</strong></div>
+        <div class="result-box"><span class="small">Melhor sequência</span><strong id="finalStreak">0</strong></div>
+      </div>
+      <button class="primary" id="restartBtn">Reiniciar desafio</button>
+    </div>
+  </div>
+
+  <script>
+    const materials = [
+      { name: 'Aço Inoxidável 304', family: 'Metal', tempMax: 1400, cost: 18, density: 8.0, strength: 520, note: 'Boa resistência e custo moderado.' },
+      { name: 'Alumínio 6061', family: 'Metal', tempMax: 580, cost: 24, density: 2.7, strength: 310, note: 'Leve, usinável e amplamente utilizado.' },
+      { name: 'Titânio Ti-6Al-4V', family: 'Metal', tempMax: 1660, cost: 130, density: 4.43, strength: 900, note: 'Excelente relação resistência/peso, porém caro.' },
+      { name: 'Magnésio AZ31', family: 'Metal', tempMax: 650, cost: 36, density: 1.77, strength: 260, note: 'Muito leve, mas com resistência mais limitada.' },
+      { name: 'Polipropileno (PP)', family: 'Polímero', tempMax: 165, cost: 8, density: 0.90, strength: 35, note: 'Baixo custo e baixa densidade.' },
+      { name: 'PEEK', family: 'Polímero', tempMax: 343, cost: 220, density: 1.30, strength: 100, note: 'Polímero de alto desempenho e alto custo.' },
+      { name: 'Alumina (Al2O3)', family: 'Cerâmica', tempMax: 2070, cost: 44, density: 3.95, strength: 350, note: 'Altíssima temperatura de serviço e boa rigidez.' },
+      { name: 'Zircônia', family: 'Cerâmica', tempMax: 2700, cost: 95, density: 5.7, strength: 500, note: 'Cerâmica avançada com alta temperatura máxima.' },
+      { name: 'Vidro Borossilicato', family: 'Cerâmica/Vidro', tempMax: 820, cost: 16, density: 2.23, strength: 48, note: 'Baixa expansão térmica e custo baixo.' },
+      { name: 'Compósito Fibra de Carbono/Epóxi', family: 'Compósito', tempMax: 260, cost: 180, density: 1.60, strength: 800, note: 'Muito resistente e leve, porém caro e termicamente limitado pela matriz.' },
+      { name: 'Compósito Fibra de Vidro/Poliéster', family: 'Compósito', tempMax: 180, cost: 32, density: 1.90, strength: 300, note: 'Versátil, relativamente leve e com custo moderado.' },
+      { name: 'Cobre Eletrolítico', family: 'Metal', tempMax: 1085, cost: 58, density: 8.96, strength: 220, note: 'Elevada densidade e custo moderado-alto.' },
+      { name: 'Ferro Fundido Cinzento', family: 'Metal', tempMax: 1200, cost: 14, density: 7.2, strength: 240, note: 'Barato e pesado, com resistência moderada.' },
+      { name: 'Nylon 6', family: 'Polímero', tempMax: 220, cost: 14, density: 1.14, strength: 75, note: 'Bom equilíbrio entre custo, densidade e resistência em polímeros.' },
+      { name: 'Carboneto de Silício', family: 'Cerâmica', tempMax: 2730, cost: 88, density: 3.21, strength: 420, note: 'Cerâmica de altíssimo desempenho térmico.' },
+      { name: 'Latão', family: 'Metal', tempMax: 930, cost: 42, density: 8.5, strength: 380, note: 'Boa usinabilidade e resistência intermediária.' }
+    ];
+
+    const scenarios = [
+      { title: 'Forno industrial compacto', text: 'Uma peça de suporte ficará próxima à câmara quente de um forno experimental. O material deve sobreviver ao ambiente sem extrapolar o orçamento do laboratório.', constraints: ['tempMin', 'costMax'] },
+      { title: 'Drone de inspeção estrutural', text: 'O chassi secundário do drone precisa ser leve para voo estável, mas também deve suportar solicitações mecânicas durante pousos e vibrações.', constraints: ['densityMax', 'strengthMin'] },
+      { title: 'Proteção térmica embarcada', text: 'A carcaça de um sensor sofrerá aquecimento elevado. Ao mesmo tempo, há limite de massa no conjunto.', constraints: ['tempMin', 'densityMax'] },
+      { title: 'Dispositivo biomédico de bancada', text: 'O equipamento deve ser resistente, mas não pode usar materiais caros por causa da escala de produção piloto.', constraints: ['strengthMin', 'costMax'] },
+      { title: 'Módulo móvel para competição estudantil', text: 'A equipe precisa de um material barato e leve para manter o sistema competitivo em custo e massa.', constraints: ['costMax', 'densityMax'] },
+      { title: 'Ferramental de alto esforço', text: 'O componente está submetido a carga elevada e aquecimento significativo durante operação.', constraints: ['strengthMin', 'tempMin'] }
+    ];
+
+    const ranges = {
+      tempMax: [165, 2730],
+      cost: [8, 220],
+      density: [0.9, 8.96],
+      strength: [35, 900]
+    };
+
+    const propertyMeta = {
+      tempMax: { label: 'Temperatura máxima', unit: '°C', better: 'high' },
+      cost: { label: 'Custo', unit: 'R$/kg', better: 'low' },
+      density: { label: 'Densidade', unit: 'g/cm³', better: 'low' },
+      strength: { label: 'Resistência', unit: 'MPa', better: 'high' }
+    };
+
+    const state = {
+      lives: 3,
+      score: 0,
+      round: 1,
+      streak: 0,
+      bestStreak: 0,
+      answered: false,
+      currentScenario: null,
+      currentThresholds: null,
+      currentOptions: [],
+      correctId: null
+    };
+
+    const el = {
+      score: document.getElementById('score'),
+      round: document.getElementById('round'),
+      lives: document.getElementById('lives'),
+      bestStreak: document.getElementById('bestStreak'),
+      missionText: document.getElementById('missionText'),
+      requirements: document.getElementById('requirements'),
+      cards: document.getElementById('cards'),
+      feedback: document.getElementById('feedback'),
+      nextRoundBtn: document.getElementById('nextRoundBtn'),
+      newGameBtn: document.getElementById('newGameBtn'),
+      modal: document.getElementById('gameOverModal'),
+      finalScore: document.getElementById('finalScore'),
+      finalRounds: document.getElementById('finalRounds'),
+      finalStreak: document.getElementById('finalStreak'),
+      restartBtn: document.getElementById('restartBtn')
+    };
+
+    function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function shuffle(array) {
+      const a = [...array];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+    function fmt(value, key) {
+      if (key === 'density') return value.toFixed(2).replace('.', ',') + ' ' + propertyMeta[key].unit;
+      if (key === 'cost') return 'R$ ' + value.toFixed(0) + '/' + 'kg';
+      return value.toFixed(0) + ' ' + propertyMeta[key].unit;
+    }
+
+    function percentage(value, key) {
+      const [min, max] = ranges[key];
+      return ((value - min) / (max - min)) * 100;
+    }
+
+    function requirementLabel(constraint, threshold) {
+      if (constraint === 'tempMin') return `Temperatura máxima ≥ ${threshold} °C`;
+      if (constraint === 'costMax') return `Custo ≤ R$ ${threshold}/kg`;
+      if (constraint === 'densityMax') return `Densidade ≤ ${threshold.toFixed(2).replace('.', ',')} g/cm³`;
+      if (constraint === 'strengthMin') return `Resistência ≥ ${threshold} MPa`;
+      return '';
+    }
+
+    function satisfies(material, thresholds) {
+      return (
+        material.tempMax >= thresholds.tempMin &&
+        material.cost <= thresholds.costMax &&
+        material.density <= thresholds.densityMax &&
+        material.strength >= thresholds.strengthMin
+      );
+    }
+
+    function generateThresholdsForScenario(candidate, scenario) {
+      const thresholds = {
+        tempMin: 0,
+        costMax: Infinity,
+        densityMax: Infinity,
+        strengthMin: 0
+      };
+
+      scenario.constraints.forEach((c) => {
+        if (c === 'tempMin') {
+          const lowerBound = Math.max(150, Math.floor(candidate.tempMax * 0.55));
+          const upperBound = Math.max(lowerBound + 1, Math.floor(candidate.tempMax * 0.95));
+          thresholds.tempMin = randomInt(lowerBound, upperBound);
+        }
+        if (c === 'costMax') {
+          const low = Math.ceil(candidate.cost * 1.05);
+          const high = Math.max(low, Math.ceil(candidate.cost * 1.9 + 4));
+          thresholds.costMax = randomInt(low, high);
+        }
+        if (c === 'densityMax') {
+          const low = Math.max(0.95, candidate.density * 1.02);
+          const high = Math.max(low + 0.02, candidate.density * 1.4 + 0.12);
+          thresholds.densityMax = round2(randomFloat(low, high));
+        }
+        if (c === 'strengthMin') {
+          const low = Math.max(30, Math.floor(candidate.strength * 0.45));
+          const high = Math.max(low + 1, Math.floor(candidate.strength * 0.93));
+          thresholds.strengthMin = randomInt(low, high);
+        }
+      });
+
+      return thresholds;
+    }
+
+    function countFails(material, thresholds, activeConstraints) {
+      let fails = 0;
+      for (const c of activeConstraints) {
+        if (c === 'tempMin' && material.tempMax < thresholds.tempMin) fails++;
+        if (c === 'costMax' && material.cost > thresholds.costMax) fails++;
+        if (c === 'densityMax' && material.density > thresholds.densityMax) fails++;
+        if (c === 'strengthMin' && material.strength < thresholds.strengthMin) fails++;
+      }
+      return fails;
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+    function randomFloat(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+    function round2(v) { return Math.round(v * 100) / 100; }
+
+    function buildRound() {
+      state.answered = false;
+      const scenario = rand(scenarios);
+      const candidatePool = shuffle(materials);
+
+      let solution = null;
+      let thresholds = null;
+      let decoys = [];
+
+      outer:
+      for (const candidate of candidatePool) {
+        for (let attempt = 0; attempt < 50; attempt++) {
+          const t = generateThresholdsForScenario(candidate, scenario);
+          const valid = materials.filter(m => satisfies(m, t));
+          if (valid.length === 1 && valid[0].name === candidate.name) {
+            const failing = materials
+              .filter(m => m.name !== candidate.name)
+              .map(m => ({ m, fails: countFails(m, t, scenario.constraints) }))
+              .filter(x => x.fails >= 1)
+              .sort((a, b) => a.fails - b.fails || Math.random() - 0.5)
+              .map(x => x.m);
+
+            if (failing.length >= 2) {
+              solution = candidate;
+              thresholds = t;
+              decoys = failing.slice(0, 2);
+              break outer;
+            }
+          }
+        }
+      }
+
+      if (!solution) {
+        solution = materials.find(m => m.name === 'Alumina (Al2O3)');
+        const fallbackScenario = scenarios[0];
+        thresholds = { tempMin: 1800, costMax: 60, densityMax: Infinity, strengthMin: 0 };
+        decoys = [materials.find(m => m.name === 'Titânio Ti-6Al-4V'), materials.find(m => m.name === 'Aço Inoxidável 304')];
+        state.currentScenario = fallbackScenario;
+      } else {
+        state.currentScenario = scenario;
+      }
+
+      state.currentThresholds = thresholds;
+      state.correctId = solution.name;
+      state.currentOptions = shuffle([solution, ...decoys]);
+
+      renderRound();
+      setFeedback('Aguardando sua decisão como Engenheiro Chefe.', '');
+    }
+
+    function renderRound() {
+      const scenario = state.currentScenario;
+      const thresholds = state.currentThresholds;
+      el.missionText.textContent = scenario.text;
+
+      el.requirements.innerHTML = '';
+      scenario.constraints.forEach(c => {
+        const box = document.createElement('div');
+        box.className = 'requirement';
+        const strong = document.createElement('strong');
+        strong.textContent = requirementLabel(c, thresholds[c]);
+        const span = document.createElement('span');
+        span.textContent = explainConstraint(c);
+        box.appendChild(strong);
+        box.appendChild(span);
+        el.requirements.appendChild(box);
+      });
+
+      el.cards.innerHTML = '';
+      state.currentOptions.forEach(material => {
+        const card = document.createElement('article');
+        card.className = 'material-card';
+        card.innerHTML = `
+          <div>
+            <div class="chip-row">
+              <span class="chip">${material.family}</span>
+              <span class="chip">Carta de material</span>
+            </div>
+            <h3>${material.name}</h3>
+            <p class="material-sub">${material.note}</p>
+          </div>
+          <div class="properties">
+            ${renderProperty(material, 'tempMax')}
+            ${renderProperty(material, 'cost')}
+            ${renderProperty(material, 'density')}
+            ${renderProperty(material, 'strength')}
+          </div>
+          <div class="card-footer">
+            <button class="primary select-btn" data-material="${escapeAttr(material.name)}">Selecionar material</button>
+          </div>
+        `;
+        el.cards.appendChild(card);
+      });
+
+      el.cards.querySelectorAll('button[data-material]').forEach(btn => {
+        btn.addEventListener('click', () => makeChoice(btn.dataset.material));
+      });
+
+      updateHud();
+    }
+
+    function explainConstraint(c) {
+      if (c === 'tempMin') return 'O material deve suportar a temperatura exigida pelo projeto.';
+      if (c === 'costMax') return 'O orçamento máximo não pode ser excedido.';
+      if (c === 'densityMax') return 'A massa precisa ser mantida baixa.';
+      if (c === 'strengthMin') return 'O material precisa resistir às cargas sem falhar.';
+      return '';
+    }
+
+    function renderProperty(material, key) {
+      return `
+        <div>
+          <div class="prop-head">
+            <span>${propertyMeta[key].label}</span>
+            <span>${fmt(material[key], key)}</span>
+          </div>
+          <div class="bar"><i style="width:${clamp(percentage(material[key], key), 4, 100)}%"></i></div>
+        </div>
+      `;
+    }
+
+    function escapeAttr(str) {
+      return str.replace(/"/g, '&quot;');
+    }
+
+    function makeChoice(materialName) {
+      if (state.answered || state.lives <= 0) return;
+      state.answered = true;
+      const selected = materials.find(m => m.name === materialName);
+      const correct = materials.find(m => m.name === state.correctId);
+      const activeConstraints = state.currentScenario.constraints;
+      const failReasons = getFailReasons(selected, state.currentThresholds, activeConstraints);
+
+      if (materialName === state.correctId) {
+        state.score += 100 + (state.round - 1) * 10;
+        state.streak += 1;
+        state.bestStreak = Math.max(state.bestStreak, state.streak);
+        updateHud();
+        setFeedback(`Correto. ${selected.name} satisfaz todas as restrições e evita a falha do projeto.`, 'good');
+        playSuccess();
+      } else {
+        state.lives -= 1;
+        state.streak = 0;
+        updateHud();
+        const reasonsText = failReasons.length ? failReasons.join(' ') : 'Ele viola pelo menos uma restrição crítica.';
+        setFeedback(`Escolha incorreta. ${selected.name} causaria falha catastrófica. ${reasonsText} O material correto era ${correct.name}.`, 'bad');
+        playAlarm();
+      }
+
+      markCards(materialName);
+
+      if (state.lives <= 0) {
+        setTimeout(showGameOver, 700);
+      }
+    }
+
+    function getFailReasons(material, thresholds, activeConstraints) {
+      const reasons = [];
+      if (activeConstraints.includes('tempMin') && material.tempMax < thresholds.tempMin) reasons.push(`Falha térmica: suporta apenas ${material.tempMax} °C, abaixo do mínimo de ${thresholds.tempMin} °C.`);
+      if (activeConstraints.includes('costMax') && material.cost > thresholds.costMax) reasons.push(`Falha econômica: custo de R$ ${material.cost}/kg, acima do teto de R$ ${thresholds.costMax}/kg.`);
+      if (activeConstraints.includes('densityMax') && material.density > thresholds.densityMax) reasons.push(`Falha de massa: densidade de ${material.density.toFixed(2).replace('.', ',')} g/cm³, acima do limite de ${thresholds.densityMax.toFixed(2).replace('.', ',')} g/cm³.`);
+      if (activeConstraints.includes('strengthMin') && material.strength < thresholds.strengthMin) reasons.push(`Falha mecânica: resistência de ${material.strength} MPa, abaixo do mínimo de ${thresholds.strengthMin} MPa.`);
+      return reasons;
+    }
+
+    function markCards(selectedName) {
+      [...el.cards.children].forEach(card => {
+        const btn = card.querySelector('button[data-material]');
+        const material = btn.dataset.material;
+        btn.disabled = true;
+        btn.classList.remove('primary');
+        btn.classList.add('secondary');
+
+        if (material === state.correctId) {
+          card.style.borderColor = 'rgba(34,197,94,.45)';
+          card.style.boxShadow = '0 18px 50px rgba(34,197,94,.12)';
+        }
+        if (material === selectedName && material !== state.correctId) {
+          card.style.borderColor = 'rgba(239,68,68,.45)';
+          card.style.boxShadow = '0 18px 50px rgba(239,68,68,.12)';
+        }
+      });
+    }
+
+    function nextRound() {
+      if (state.lives <= 0) return;
+      if (!state.answered) {
+        setFeedback('Selecione um material antes de avançar para a próxima rodada.', 'warn');
+        return;
+      }
+      state.round += 1;
+      buildRound();
+    }
+
+    function updateHud() {
+      el.score.textContent = state.score;
+      el.round.textContent = state.round;
+      el.bestStreak.textContent = state.bestStreak;
+      el.lives.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const heart = document.createElement('span');
+        heart.className = 'heart' + (i < state.lives ? '' : ' dead');
+        heart.textContent = '❤';
+        el.lives.appendChild(heart);
+      }
+    }
+
+    function setFeedback(text, mode) {
+      el.feedback.textContent = text;
+      el.feedback.className = 'feedback' + (mode ? ' ' + mode : '');
+    }
+
+    function resetGame() {
+      state.lives = 3;
+      state.score = 0;
+      state.round = 1;
+      state.streak = 0;
+      state.bestStreak = 0;
+      hideGameOver();
+      buildRound();
+    }
+
+    function showGameOver() {
+      el.finalScore.textContent = state.score;
+      el.finalRounds.textContent = Math.max(0, state.round - 1);
+      el.finalStreak.textContent = state.bestStreak;
+      el.modal.classList.add('show');
+      el.modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideGameOver() {
+      el.modal.classList.remove('show');
+      el.modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function audioCtx() {
+      if (!window.__audioCtx) {
+        window.__audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return window.__audioCtx;
+    }
+
+    function beep(freq, duration, type = 'sine', gainValue = 0.06, startAt = 0) {
+      const ctx = audioCtx();
+      const now = ctx.currentTime + startAt;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(gainValue, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    }
+
+    function playSuccess() {
+      beep(523.25, 0.12, 'triangle', 0.05, 0);
+      beep(659.25, 0.14, 'triangle', 0.05, 0.08);
+      beep(783.99, 0.18, 'triangle', 0.05, 0.16);
+    }
+
+    function playAlarm() {
+      beep(160, 0.22, 'sawtooth', 0.07, 0);
+      beep(110, 0.24, 'square', 0.06, 0.12);
+      beep(160, 0.22, 'sawtooth', 0.07, 0.28);
+    }
+
+    el.nextRoundBtn.addEventListener('click', nextRound);
+    el.newGameBtn.addEventListener('click', resetGame);
+    el.restartBtn.addEventListener('click', resetGame);
+    el.modal.addEventListener('click', (e) => {
+      if (e.target === el.modal) hideGameOver();
+    });
+
+    resetGame();
+  </script>
+</body>
+</html>
